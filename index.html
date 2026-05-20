@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>WCY Behavioral Event Recorder</title>
+  <style>
+    :root {
+      --navy:#12324a;
+      --blue:#1d6fa5;
+      --light:#f4f7fb;
+      --card:#ffffff;
+      --border:#d6e0ea;
+      --danger:#b42318;
+      --warning:#b76e00;
+      --success:#167647;
+      --text:#1f2937;
+      --muted:#667085;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin:0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background:var(--light);
+      color:var(--text);
+    }
+    header {
+      background:linear-gradient(135deg,var(--navy),#0f4c75);
+      color:white;
+      padding:18px 16px;
+      position:sticky;
+      top:0;
+      z-index:10;
+      box-shadow:0 2px 8px rgba(0,0,0,.18);
+    }
+    header h1 { margin:0; font-size:22px; }
+    header p { margin:4px 0 0; opacity:.9; font-size:13px; }
+    main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding:16px;
+    }
+    .card {
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:16px;
+      margin-bottom:14px;
+      box-shadow:0 1px 4px rgba(16,24,40,.06);
+    }
+    .card h2 {
+      margin:0 0 12px;
+      font-size:18px;
+      color:var(--navy);
+    }
+    label {
+      display:block;
+      font-size:13px;
+      font-weight:650;
+      margin:10px 0 6px;
+    }
+    input, select, textarea {
+      width:100%;
+      padding:12px;
+      border:1px solid var(--border);
+      border-radius:10px;
+      font-size:16px;
+      background:white;
+    }
+    textarea { min-height:80px; resize:vertical; }
+    .grid {
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap:10px;
+    }
+    @media (min-width:720px) {
+      .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .grid.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+    button {
+      border:0;
+      border-radius:12px;
+      padding:13px 12px;
+      font-size:15px;
+      font-weight:700;
+      background:#e8f1f8;
+      color:#12324a;
+      cursor:pointer;
+    }
+    button:hover { filter:brightness(.97); }
+    button.selected {
+      background:var(--blue);
+      color:white;
+      box-shadow:0 0 0 3px rgba(29,111,165,.18);
+    }
+    button.danger { background:#fee4e2; color:#912018; }
+    button.danger.selected, button.danger.primary { background:var(--danger); color:white; }
+    button.warning { background:#fff3cd; color:#7a4b00; }
+    button.warning.selected, button.warning.primary { background:var(--warning); color:white; }
+    button.success { background:#dcfae6; color:#085d3a; }
+    button.success.selected, button.success.primary { background:var(--success); color:white; }
+    button.primary {
+      background:var(--navy);
+      color:white;
+      width:100%;
+      margin-top:8px;
+    }
+    button.secondary {
+      background:#eef2f6;
+      color:#344054;
+      width:100%;
+      margin-top:8px;
+    }
+    .hidden { display:none !important; }
+    .timeline {
+      border-left:4px solid var(--blue);
+      padding-left:12px;
+      margin-top:10px;
+    }
+    .timeline-item {
+      padding:8px 0;
+      border-bottom:1px dashed var(--border);
+    }
+    .time {
+      font-weight:800;
+      color:var(--navy);
+      font-size:17px;
+    }
+    .time span {
+      color:var(--muted);
+      font-size:14px;
+      font-weight:650;
+      margin-left:5px;
+    }
+    .pill {
+      display:inline-block;
+      padding:5px 9px;
+      border-radius:999px;
+      background:#eef2f6;
+      color:#344054;
+      font-size:12px;
+      font-weight:700;
+      margin:3px 4px 3px 0;
+    }
+    .alert {
+      border-radius:12px;
+      padding:12px;
+      font-weight:700;
+      margin:10px 0;
+    }
+    .alert.red { background:#fee4e2; color:#912018; }
+    .alert.yellow { background:#fff3cd; color:#7a4b00; }
+    .alert.green { background:#dcfae6; color:#085d3a; }
+    .row {
+      display:flex;
+      gap:10px;
+      align-items:center;
+    }
+    .row > * { flex:1; }
+    .small {
+      font-size:12px;
+      color:var(--muted);
+      margin-top:4px;
+    }
+    .summary {
+      white-space:pre-wrap;
+      background:#0b1f2f;
+      color:white;
+      padding:14px;
+      border-radius:14px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size:13px;
+      line-height:1.45;
+      max-height:360px;
+      overflow:auto;
+    }
+
+    .modalBackdrop {
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.45);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+      z-index:100;
+    }
+    .modal {
+      width:min(760px, 100%);
+      max-height:90vh;
+      overflow:auto;
+      background:white;
+      border-radius:20px;
+      padding:16px;
+      box-shadow:0 20px 50px rgba(0,0,0,.3);
+    }
+    .timePickerGrid {
+      display:grid;
+      grid-template-columns:repeat(4, 1fr);
+      gap:8px;
+      margin-bottom:12px;
+    }
+    .minuteGrid {
+      display:grid;
+      grid-template-columns:repeat(6, 1fr);
+      gap:8px;
+      margin-bottom:12px;
+    }
+    .pickerHeader {
+      font-weight:800;
+      color:var(--navy);
+      margin:12px 0 8px;
+    }
+    .selectedTimePreview {
+      text-align:center;
+      font-size:26px;
+      font-weight:900;
+      color:var(--navy);
+      background:#eef6fb;
+      border-radius:14px;
+      padding:12px;
+      margin:10px 0;
+    }
+
+    .editLog {
+      font-size:12px;
+      color:#475467;
+      background:#f8fafc;
+      border-radius:10px;
+      padding:10px;
+      margin-top:8px;
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>WCY Behavioral Event Recorder</h1>
+  <p>Rapid event capture • code tracking • restraint timeline • medication workflow</p>
+</header>
+
+<main>
+  <section class="card">
+    <h2>1. Client / Event</h2>
+    <label>Client initials or ID</label>
+    <input id="client" placeholder="Example: J.D. / 12345" />
+    <div class="row">
+      <div>
+        <label>Unit</label>
+        <select id="unit">
+          <option>San Saba</option>
+          <option>Brazos</option>
+          <option>Rio</option>
+          <option>Trinity</option>
+          <option>Pecos</option>
+          <option>Bosque</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div>
+        <label>Location</label>
+        <select id="location">
+          <option>Dayroom</option><option>Hallway</option><option>Bedroom</option><option>Cafeteria</option>
+          <option>Outside/Campus</option><option>Bathroom</option><option>School</option><option>Other</option>
+        </select>
+      </div>
+    </div>
+    <label>Event trigger</label>
+    <select id="trigger">
+      <option>Redirection</option><option>Denied request</option><option>Peer conflict</option>
+      <option>Phone call</option><option>Limit setting</option><option>Transition/activity change</option>
+      <option>Unknown</option><option>Other</option>
+    </select>
+  </section>
+
+  <section class="card">
+    <h2>2. Code Type</h2>
+    <div class="grid three" id="codeButtons">
+      <button data-code="ERT">ERT</button>
+      <button data-code="Code White" class="danger">Code White</button>
+      <button data-code="Code Yellow" class="warning">Code Yellow</button>
+      <button data-code="Code Blue">Code Blue</button>
+      <button data-code="Code Green" class="success">Code Green</button>
+      <button data-code="No Code">No Code</button>
+    </div>
+    <button class="primary" onclick="stampCode()">Time Code Called</button>
+    <div id="codeStatus" class="small"></div>
+  </section>
+
+  <section class="card">
+    <h2>3. Intervention Type</h2>
+    <div class="grid three" id="interventionButtons">
+      <button data-intervention="Verbal de-escalation">Verbal De-escalation</button>
+      <button data-intervention="Redirection">Redirection</button>
+      <button data-intervention="PO Medication">PO Medication</button>
+      <button data-intervention="Physical Restraint" class="warning">Physical Restraint</button>
+      <button data-intervention="Mechanical Chair" class="danger">Mechanical Chair</button>
+      <button data-intervention="IM Medication" class="danger">IM Medication</button>
+    </div>
+  </section>
+
+
+  <section class="card" id="providerCard">
+    <h2>4. Provider Orders</h2>
+
+    <label>Provider Coverage Today</label>
+    <div class="grid" id="providerModeButtons">
+      <button data-provider-mode="single">One Provider Working</button>
+      <button data-provider-mode="dual">MD + NP Working</button>
+    </div>
+
+    <div id="singleProviderSection" class="hidden">
+      <div class="alert green">
+        Use this when one provider is covering both medication/restriction orders and restraint orders.
+      </div>
+
+      <label>Covering Provider</label>
+      <div class="grid three" id="singleProviderButtons">
+        <button data-single-provider="Dr. Charles">Dr. Charles</button>
+        <button data-single-provider="Dr. Mundy">Dr. Mundy</button>
+        <button data-single-provider="Dr. Kaza">Dr. Kaza</button>
+        <button data-single-provider="NP Bingham">NP Bingham</button>
+        <button data-single-provider="NP Brunette">NP Brunette</button>
+        <button data-single-provider="NP Laura">NP Laura</button>
+      </div>
+
+      <label>Order Type</label>
+      <select id="singleOrderType">
+        <option>Medication order</option>
+        <option>Restriction order</option>
+        <option>Physical restraint order</option>
+        <option>Mechanical chair order</option>
+        <option>Continue restraint order</option>
+        <option>Other clinical/restraint order</option>
+      </select>
+
+      <label>Order Received</label>
+      <input id="singleOrder" placeholder="Example: Zyprexa 10 mg IM once / Mechanical chair approved" />
+
+      <button class="primary" onclick="stampSingleProvider()">Time Provider Contacted</button>
+      <div id="singleProviderStatus" class="small"></div>
+    </div>
+
+    <div id="dualProviderSection" class="hidden">
+      <div class="alert yellow">
+        Use this when NP covers medication/restriction orders and MD covers restraint orders.
+      </div>
+
+      <h3 style="color:#12324a;">Medication / Restriction Orders</h3>
+
+      <label>NP Provider</label>
+      <div class="grid three" id="npButtons">
+        <button data-np="NP Bingham">NP Bingham</button>
+        <button data-np="NP Brunette">NP Brunette</button>
+        <button data-np="NP Laura">NP Laura</button>
+      </div>
+
+      <label>Order Type</label>
+      <select id="npOrderType">
+        <option>PO medication order</option>
+        <option>IM medication order</option>
+        <option>Restriction order</option>
+        <option>Other clinical order</option>
+      </select>
+
+      <label>Order Received</label>
+      <input id="npOrder" placeholder="Example: Zyprexa 10 mg IM once" />
+
+      <button class="primary" onclick="stampNP()">Time NP Contacted</button>
+      <div id="npStatus" class="small"></div>
+
+      <hr style="margin:20px 0;border:none;border-top:1px solid #d6e0ea;">
+
+      <h3 style="color:#12324a;">Restraint Orders</h3>
+
+      <label>MD Provider</label>
+      <div class="grid three" id="mdButtons">
+        <button data-md="Dr. Charles">Dr. Charles</button>
+        <button data-md="Dr. Mundy">Dr. Mundy</button>
+        <button data-md="Dr. Kaza">Dr. Kaza</button>
+      </div>
+
+      <label>Restraint Order Type</label>
+      <select id="mdOrderType">
+        <option>Physical restraint order</option>
+        <option>Mechanical chair order</option>
+        <option>Continue restraint order</option>
+        <option>Release restraint guidance</option>
+      </select>
+
+      <label>Order Received</label>
+      <input id="mdOrder" placeholder="Example: Mechanical chair approved" />
+
+      <button class="primary" onclick="stampMD()">Time MD Contacted</button>
+      <div id="mdStatus" class="small"></div>
+    </div>
+  </section>
+
+
+  <section class="card" id="medCard">
+    <h2>5. Medication Section</h2>
+
+    <div class="alert yellow">
+      Add each ordered medication separately. Example: Zyprexa 5 mg IM + Benadryl 50 mg IM should be entered as two medication line items.
+    </div>
+
+    <label>Medication</label>
+    <div class="grid four" id="medButtons">
+      <button data-med="Benadryl">Benadryl</button>
+      <button data-med="Zyprexa">Zyprexa</button>
+      <button data-med="Thorazine">Thorazine</button>
+      <button data-med="Haldol">Haldol</button>
+    </div>
+
+    <label>Dose</label>
+    <div class="grid four" id="doseButtons"></div>
+
+    <label>Route</label>
+    <div class="grid" id="routeButtons">
+      <button data-route="PO">PO</button>
+      <button data-route="IM" class="danger">IM</button>
+    </div>
+
+    <div id="poResponseBlock" class="hidden">
+      <label>Client response to PO medication</label>
+      <div class="grid">
+        <button class="success" onclick="setPOResponse('Accepted')">Accepted</button>
+        <button class="danger" onclick="setPOResponse('Refused')">Refused</button>
+      </div>
+    </div>
+
+    <div id="imBlock" class="hidden">
+      <label>Injection site</label>
+      <select id="site">
+        <option>Left deltoid</option><option>Right deltoid</option>
+        <option>Left glute</option><option>Right glute</option>
+        <option>Left vastus lateralis</option><option>Right vastus lateralis</option>
+      </select>
+
+      <label>Administering nurse/LVN</label>
+      <div class="grid three" id="rnButtons">
+        <button data-rn="Jimmie Weaver">RN Jimmie Weaver</button>
+        <button data-rn="Susie Buse">RN Susie Buse</button>
+        <button data-rn="Peggy Norrell">RN Peggy Norrell</button>
+        <button data-rn="Landon">LVN Landon</button>
+        <button data-rn="Shontai">LVN Shontai</button>
+      </div>
+      <input id="adminNurse" placeholder="Other nurse/LVN name" style="margin-top:10px;" />
+    </div>
+
+    <button class="primary" onclick="addMedicationOrder()">Add Medication Line Item</button>
+
+    <div id="medicationOrderList" style="margin-top:12px;"></div>
+
+    <button class="secondary" onclick="stampMedicationAdmin()">Time Selected Medication(s) Administered</button>
+    <div id="imStatus" class="small"></div>
+
+    <div id="refusalAlert" class="alert red hidden">
+      PO medication refused while mechanical chair is active. IM medication pathway should be documented.
+    </div>
+  </section>
+
+  <section class="card" id="restraintCard">
+    <h2>6. Restraint / Mechanical Chair</h2>
+    <label>Lead staff applying restraint</label>
+    <input id="leadStaff" placeholder="Lead staff name" />
+    <label>Assisting staff</label>
+    <input id="assistStaff" placeholder="Separate names with commas" />
+
+    <div class="grid">
+      <button class="warning primary" onclick="stampRestraintStart()">Start Physical Restraint</button>
+      <button class="secondary" onclick="stampRestraintRelease()">Release Physical Restraint</button>
+      <button class="danger primary" onclick="stampChairTransition()">Transition to Mechanical Chair</button>
+      <button class="success primary" onclick="stampChairRelease()">Release From Chair</button>
+    </div>
+
+    <div class="alert yellow">
+      Rule: If a code is active and the client is placed in the mechanical chair, the chair transition time auto-fills as the code called-off time.
+    </div>
+
+    <label>Edit Event Times</label>
+    <div id="timeEditors"></div>
+    <div id="editLog" class="editLog hidden"></div>
+  </section>
+
+  <section class="card">
+    <h2>7. Optional Narrative</h2>
+    <textarea id="narrative" placeholder="Brief factual note only..."></textarea>
+  </section>
+
+  <section class="card">
+    <h2>8. Event Timeline</h2>
+    <div id="activeBanner"></div>
+    <div id="timeline" class="timeline"></div>
+  </section>
+
+  <section class="card">
+    <h2>9. Progress Note Narrative</h2>
+    <button class="primary" onclick="buildProgressNote()">Generate Progress Note</button>
+    <button class="secondary" onclick="copyProgressNote()">Copy Progress Note</button>
+    <div id="progressNote" class="summary" style="margin-top:12px;"></div>
+  </section>
+
+  <section class="card">
+    <h2>10. Text / Share Summary</h2>
+    <button class="primary" onclick="buildSummary()">Generate Event Summary</button>
+    <button class="secondary" onclick="copySummary()">Copy Summary</button>
+    <button class="secondary" onclick="smsSummary()">Open Text Message</button>
+    <div id="summary" class="summary" style="margin-top:12px;"></div>
+  </section>
+
+  <div id="timePickerModal" class="modalBackdrop hidden">
+    <div class="modal">
+      <h2 id="timePickerTitle">Edit Time</h2>
+      <div class="selectedTimePreview" id="selectedTimePreview">--:--</div>
+
+      <div class="pickerHeader">Hour</div>
+      <div class="timePickerGrid" id="hourPicker"></div>
+
+      <div class="pickerHeader">Minutes</div>
+      <div class="minuteGrid" id="minutePicker"></div>
+
+      <div class="pickerHeader">AM / PM</div>
+      <div class="grid" id="ampmPicker">
+        <button onclick="setPickerAMPM('AM')">AM</button>
+        <button onclick="setPickerAMPM('PM')">PM</button>
+      </div>
+
+      <button class="secondary" onclick="setPickerNow()">Use Current Time</button>
+      <button class="primary" onclick="savePickedTime()">Save Corrected Time</button>
+      <button class="secondary" onclick="closeTimePicker()">Cancel</button>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const state = {
+  code:null,
+  interventions:[],
+  providerType:null,
+  providerName:null,
+  npProvider:null,
+  mdProvider:null,
+  providerMode:null,
+  singleProvider:null,
+  selectedRN:null,
+  med:null,
+  dose:null,
+  route:null,
+  poResponse:null,
+  medicationOrders:[],
+  mechanicalActive:false,
+  times:{},
+  timeline:[],
+  edits:[],
+  picker:{key:null,label:null,hour:12,minute:0,ampm:'PM'}
+};
+
+const doseMap = {
+  "Benadryl":["25 mg","50 mg","Other"],
+  "Zyprexa":["5 mg","10 mg","Other"],
+  "Thorazine":["50 mg","100 mg","Other"],
+  "Haldol":["2.5 mg","5 mg","Other"]
+};
+
+function nowISO(){ return new Date().toISOString(); }
+
+function formatTime(iso){
+  if(!iso) return "";
+  const d = new Date(iso);
+  const hh = String(d.getHours()).padStart(2,'0');
+  const mm = String(d.getMinutes()).padStart(2,'0');
+  let h = d.getHours();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12; if(h === 0) h = 12;
+  return `${hh}:${mm} (${h}:${mm} ${ampm})`;
+}
+
+function addTimeline(label, key, iso=null){
+  const t = iso || nowISO();
+  if(key) state.times[key] = t;
+  state.timeline.push({label, time:t, key});
+  render();
+}
+
+function selectGroup(containerId, attr, valueKey, callback){
+  document.getElementById(containerId).addEventListener('click', e => {
+    if(e.target.tagName !== 'BUTTON') return;
+    const value = e.target.getAttribute(attr);
+    if(!value) return;
+    Array.from(e.currentTarget.children).forEach(b=>b.classList.remove('selected'));
+    e.target.classList.add('selected');
+    state[valueKey] = value;
+    if(callback) callback(value);
+    render();
+  });
+}
+
+selectGroup('codeButtons','data-code','code');
+
+selectGroup('rnButtons','data-rn','selectedRN', rn => {
+  document.getElementById('adminNurse').value = rn;
+});
+
+
+
+document.getElementById('providerModeButtons').addEventListener('click', e => {
+  if(e.target.tagName !== 'BUTTON') return;
+  const mode = e.target.getAttribute('data-provider-mode');
+  if(!mode) return;
+  state.providerMode = mode;
+  Array.from(e.currentTarget.children).forEach(b=>b.classList.remove('selected'));
+  e.target.classList.add('selected');
+  document.getElementById('singleProviderSection').classList.toggle('hidden', mode !== 'single');
+  document.getElementById('dualProviderSection').classList.toggle('hidden', mode !== 'dual');
+  render();
+});
+
+selectGroup('singleProviderButtons','data-single-provider','singleProvider');
+selectGroup('npButtons','data-np','npProvider');
+selectGroup('mdButtons','data-md','mdProvider');
+
+function stampSingleProvider(){
+  const provider = state.singleProvider || "Provider";
+  const orderType = document.getElementById('singleOrderType').value;
+  addTimeline(`${provider} contacted for ${orderType}`, "singleProviderCalled");
+  render();
+}
+
+function stampNP(){
+  const provider = state.npProvider || "NP";
+  const orderType = document.getElementById('npOrderType').value;
+  addTimeline(`${provider} contacted for ${orderType}`, "npCalled");
+  render();
+}
+
+function stampMD(){
+  const provider = state.mdProvider || "MD";
+  const orderType = document.getElementById('mdOrderType').value;
+  addTimeline(`${provider} contacted for ${orderType}`, "mdCalled");
+  render();
+}
+
+selectGroup('medButtons','data-med','med', med => {
+  const doseDiv = document.getElementById('doseButtons');
+  doseDiv.innerHTML = "";
+  doseMap[med].forEach(d => {
+    const btn = document.createElement('button');
+    btn.textContent = d;
+    btn.onclick = () => {
+      state.dose = d;
+      Array.from(doseDiv.children).forEach(b=>b.classList.remove('selected'));
+      btn.classList.add('selected');
+      render();
+    };
+    doseDiv.appendChild(btn);
+  });
+});
+selectGroup('routeButtons','data-route','route', route => {
+  if(route === "PO") document.getElementById('poResponseBlock').classList.remove('hidden');
+  if(route === "IM") document.getElementById('imBlock').classList.remove('hidden');
+});
+
+document.getElementById('interventionButtons').addEventListener('click', e => {
+  if(e.target.tagName !== 'BUTTON') return;
+  const value = e.target.getAttribute('data-intervention');
+  if(!value) return;
+  e.target.classList.toggle('selected');
+  if(state.interventions.includes(value)) {
+    state.interventions = state.interventions.filter(x=>x!==value);
+  } else {
+    state.interventions.push(value);
+  }
+  render();
+});
+
+function stampCode(){
+  if(!state.code) { alert("Select a code type first."); return; }
+  if(state.code === "No Code") return;
+  addTimeline(`${state.code} called`, "codeCalled");
+}
+
+function stampProvider(){
+  addTimeline(`${state.providerType || "Provider"} contacted`, "providerCalled");
+}
+
+function setPOResponse(resp){
+  state.poResponse = resp;
+  addTimeline(`PO medication ${resp.toLowerCase()}`, "poResponseTime");
+  if(resp === "Refused" && state.mechanicalActive){
+    document.getElementById('refusalAlert').classList.remove('hidden');
+    document.getElementById('imBlock').classList.remove('hidden');
+    state.route = "IM";
+    addTimeline("IM medication pathway triggered due to PO refusal during mechanical restraint", null);
+  }
+  render();
+}
+
+
+function addMedicationOrder(){
+  if(!state.med){ alert("Select a medication."); return; }
+  if(!state.dose){ alert("Select a dose."); return; }
+  if(!state.route){ alert("Select a route."); return; }
+
+  const order = {
+    id: Date.now(),
+    med: state.med,
+    dose: state.dose,
+    route: state.route,
+    poResponse: state.route === "PO" ? state.poResponse : null,
+    site: state.route === "IM" ? document.getElementById('site').value : "",
+    administeredBy: state.route === "IM" ? (document.getElementById('adminNurse').value || "") : "",
+    time: null
+  };
+
+  state.medicationOrders.push(order);
+  addTimeline(`${order.med} ${order.dose} ${order.route} added as medication line item`, null);
+  renderMedicationOrders();
+}
+
+function stampMedicationAdmin(){
+  if(!state.medicationOrders.length){ alert("Add at least one medication line item first."); return; }
+  const t = nowISO();
+  state.times.imAdministered = t;
+  state.medicationOrders.forEach(o => {
+    if(!o.time) o.time = t;
+  });
+  const meds = state.medicationOrders.map(o => `${o.med} ${o.dose} ${o.route}`).join(" + ");
+  addTimeline(`Medication administered: ${meds}`, "imAdministered", t);
+  renderMedicationOrders();
+}
+
+function removeMedicationOrder(id){
+  state.medicationOrders = state.medicationOrders.filter(o => o.id !== id);
+  renderMedicationOrders();
+}
+
+function renderMedicationOrders(){
+  const div = document.getElementById('medicationOrderList');
+  if(!div) return;
+  if(!state.medicationOrders.length){
+    div.innerHTML = `<div class="small">No medication line items added yet.</div>`;
+    return;
+  }
+
+  div.innerHTML = state.medicationOrders.map(o => `
+    <div class="timeline-item" style="border:1px solid #d6e0ea;border-radius:12px;padding:10px;margin-bottom:8px;background:#f8fafc;">
+      <b>${o.med} ${o.dose} ${o.route}</b><br>
+      ${o.route === "PO" ? `PO Response: ${o.poResponse || "Not selected"}<br>` : ""}
+      ${o.route === "IM" ? `Site: ${o.site || ""}<br>Administered by: ${o.administeredBy || ""}<br>` : ""}
+      ${o.time ? `Time: ${formatTime(o.time)}<br>` : ""}
+      <button class="danger" style="margin-top:8px;" onclick="removeMedicationOrder(${o.id})">Remove</button>
+    </div>
+  `).join("");
+}
+
+
+function stampRestraintStart(){
+  addTimeline("Physical restraint applied", "restraintApplied");
+}
+
+function stampRestraintRelease(){
+  addTimeline("Physical restraint released", "restraintReleased");
+}
+
+function stampChairTransition(){
+  const t = nowISO();
+  state.mechanicalActive = true;
+  state.times.chairTransition = t;
+  state.times.codeCalledOff = t;
+  state.timeline.push({label:"Transitioned to mechanical chair", time:t, key:"chairTransition"});
+  if(state.code && state.code !== "No Code"){
+    state.timeline.push({label:`${state.code} called off`, time:t, key:"codeCalledOff"});
+  }
+  render();
+}
+
+function stampChairRelease(){
+  state.mechanicalActive = false;
+  addTimeline("Released from mechanical chair", "chairReleased");
+}
+
+function render(){
+  document.getElementById('codeStatus').innerHTML = state.times.codeCalled ? 
+    `Code called: <b>${formatTime(state.times.codeCalled)}</b>` : "";
+  
+  const singleStatus = document.getElementById('singleProviderStatus');
+  if(singleStatus){
+    singleStatus.innerHTML = state.times.singleProviderCalled ?
+      `Provider contacted: <b>${formatTime(state.times.singleProviderCalled)}</b>` : "";
+  }
+
+  const npStatus = document.getElementById('npStatus');
+  if(npStatus){
+    npStatus.innerHTML = state.times.npCalled ?
+      `NP contacted: <b>${formatTime(state.times.npCalled)}</b>` : "";
+  }
+
+  const mdStatus = document.getElementById('mdStatus');
+  if(mdStatus){
+    mdStatus.innerHTML = state.times.mdCalled ?
+      `MD contacted: <b>${formatTime(state.times.mdCalled)}</b>` : "";
+  }
+
+  document.getElementById('imStatus').innerHTML = state.times.imAdministered ?
+    `Medication administered: <b>${formatTime(state.times.imAdministered)}</b>` : "";
+
+  const banner = document.getElementById('activeBanner');
+  banner.innerHTML = "";
+  if(state.mechanicalActive){
+    banner.innerHTML = `<div class="alert red">MECHANICAL CHAIR ACTIVE</div>`;
+  }
+
+  const tl = document.getElementById('timeline');
+  tl.innerHTML = "";
+  state.timeline.sort((a,b)=>new Date(a.time)-new Date(b.time)).forEach(item => {
+    const div = document.createElement('div');
+    div.className = "timeline-item";
+    div.innerHTML = `<div class="time">${formatTime(item.time)}</div><div>${item.label}</div>`;
+    tl.appendChild(div);
+  });
+
+  renderTimeEditors();
+  renderMedicationOrders();
+}
+
+function renderTimeEditors(){
+  const labels = {
+    codeCalled:"Code Called",
+    codeCalledOff:"Code Called Off",
+    restraintApplied:"Physical Restraint Applied",
+    restraintReleased:"Physical Restraint Released",
+    chairTransition:"Transitioned to Mechanical Chair",
+    chairReleased:"Released From Mechanical Chair",
+    singleProviderCalled:"Provider Contacted",
+    npCalled:"NP Contacted",
+    mdCalled:"MD Contacted",
+    providerCalled:"Provider Contacted",
+    imAdministered:"Medication Administered",
+    poResponseTime:"PO Medication Response"
+  };
+  const div = document.getElementById('timeEditors');
+  div.innerHTML = "";
+  Object.keys(labels).forEach(key => {
+    if(!state.times[key]) return;
+    const row = document.createElement('div');
+    row.className = "timeline-item";
+    row.style.border = "1px solid #d6e0ea";
+    row.style.borderRadius = "12px";
+    row.style.padding = "10px";
+    row.style.marginBottom = "8px";
+    row.style.background = "#f8fafc";
+    row.innerHTML = `
+      <div class="small">${labels[key]}</div>
+      <div class="time">${formatTime(state.times[key])}</div>
+      <button class="secondary" onclick="openTimePicker('${key}', '${labels[key]}')">Edit Time With Buttons</button>
+    `;
+    div.appendChild(row);
+  });
+
+  const log = document.getElementById('editLog');
+  if(state.edits.length){
+    log.classList.remove('hidden');
+    log.innerHTML = "<b>Edit Audit Trail</b><br>" + state.edits.map(e => 
+      `${e.label}: ${formatTime(e.old)} → ${formatTime(e.new)} | Reason: ${e.reason}`
+    ).join("<br>");
+  }
+}
+
+
+function buildPickerButtons(){
+  const hourDiv = document.getElementById('hourPicker');
+  const minDiv = document.getElementById('minutePicker');
+  if(hourDiv && !hourDiv.children.length){
+    for(let i=1;i<=12;i++){
+      const b = document.createElement('button');
+      b.textContent = i;
+      b.onclick = () => setPickerHour(i);
+      hourDiv.appendChild(b);
+    }
+  }
+  if(minDiv && !minDiv.children.length){
+    for(let i=0;i<60;i++){
+      const b = document.createElement('button');
+      b.textContent = String(i).padStart(2,'0');
+      b.onclick = () => setPickerMinute(i);
+      minDiv.appendChild(b);
+    }
+  }
+}
+
+function openTimePicker(key, label){
+  buildPickerButtons();
+  const d = new Date(state.times[key]);
+  let h = d.getHours();
+  const ampm = h >= 12 ? "PM" : "AM";
+  h = h % 12; if(h === 0) h = 12;
+  state.picker = {key, label, hour:h, minute:d.getMinutes(), ampm};
+  document.getElementById('timePickerTitle').textContent = `Edit ${label}`;
+  document.getElementById('timePickerModal').classList.remove('hidden');
+  updatePickerPreview();
+}
+
+function closeTimePicker(){
+  document.getElementById('timePickerModal').classList.add('hidden');
+}
+
+function setPickerHour(h){
+  state.picker.hour = h;
+  updatePickerPreview();
+}
+
+function setPickerMinute(m){
+  state.picker.minute = m;
+  updatePickerPreview();
+}
+
+function setPickerAMPM(ap){
+  state.picker.ampm = ap;
+  updatePickerPreview();
+}
+
+function setPickerNow(){
+  const d = new Date();
+  let h = d.getHours();
+  const ampm = h >= 12 ? "PM" : "AM";
+  h = h % 12; if(h === 0) h = 12;
+  state.picker.hour = h;
+  state.picker.minute = d.getMinutes();
+  state.picker.ampm = ampm;
+  updatePickerPreview();
+}
+
+function updatePickerPreview(){
+  const p = state.picker;
+  let h24 = p.hour % 12;
+  if(p.ampm === "PM") h24 += 12;
+  const military = `${String(h24).padStart(2,'0')}:${String(p.minute).padStart(2,'0')}`;
+  document.getElementById('selectedTimePreview').textContent = `${military} (${p.hour}:${String(p.minute).padStart(2,'0')} ${p.ampm})`;
+
+  Array.from(document.getElementById('hourPicker').children).forEach(b => {
+    b.classList.toggle('selected', Number(b.textContent) === p.hour);
+  });
+  Array.from(document.getElementById('minutePicker').children).forEach(b => {
+    b.classList.toggle('selected', Number(b.textContent) === p.minute);
+  });
+  Array.from(document.getElementById('ampmPicker').children).forEach(b => {
+    b.classList.toggle('selected', b.textContent === p.ampm);
+  });
+}
+
+function savePickedTime(){
+  const p = state.picker;
+  if(!p.key) return;
+  let h24 = p.hour % 12;
+  if(p.ampm === "PM") h24 += 12;
+  const hhmm = `${String(h24).padStart(2,'0')}:${String(p.minute).padStart(2,'0')}`;
+  editTime(p.key, hhmm, "Time corrected using button time picker");
+  closeTimePicker();
+}
+
+
+function editTime(key, hhmm, reasonOverride=null){
+  const old = state.times[key];
+  const oldDate = new Date(old);
+  const [h,m] = hhmm.split(':').map(Number);
+  const nd = new Date(oldDate);
+  nd.setHours(h); nd.setMinutes(m); nd.setSeconds(0); nd.setMilliseconds(0);
+  const reason = reasonOverride || prompt("Reason for time correction:", "Time confirmed with staff after debrief");
+  state.times[key] = nd.toISOString();
+  state.timeline.forEach(item => {
+    if(item.key === key) item.time = nd.toISOString();
+  });
+  state.edits.push({label:key, old, new:nd.toISOString(), reason:reason || "Not provided"});
+  render();
+}
+
+function selectedPills(items){
+  return items.map(x=>`• ${x}`).join('\n');
+}
+
+
+function buildProgressNote(){
+  const client = document.getElementById('client').value || "[client]";
+  const unit = document.getElementById('unit').value;
+  const location = document.getElementById('location').value;
+  const trigger = document.getElementById('trigger').value;
+  const provider = document.getElementById('providerName').value || "";
+  const lead = document.getElementById('leadStaff').value || "";
+  const assist = document.getElementById('assistStaff').value || "";
+  const narrative = document.getElementById('narrative').value || "";
+  const site = document.getElementById('site').value || "";
+  const adminNurse = document.getElementById('adminNurse').value || "";
+
+  let note = "";
+  note += `Client ${client} was involved in a behavioral event on ${unit} unit in the ${location}. `;
+  note += `The identified trigger was ${trigger.toLowerCase()}. `;
+
+  if(state.code && state.code !== "No Code"){
+    note += `${state.code} was initiated`;
+    if(state.times.codeCalled) note += ` at ${formatTime(state.times.codeCalled)}`;
+    note += `. `;
+  }
+
+  if(state.interventions.length){
+    note += `Interventions utilized included ${state.interventions.join(", ")}. `;
+  }
+
+  if(state.times.restraintApplied){
+    note += `Physical restraint was initiated at ${formatTime(state.times.restraintApplied)}`;
+    if(lead) note += ` by ${lead}`;
+    if(assist) note += ` with assistance from ${assist}`;
+    note += `. `;
+  }
+
+  if(state.times.chairTransition){
+    note += `Client was transitioned to the mechanical chair at ${formatTime(state.times.chairTransition)}. `;
+    if(state.code && state.code !== "No Code"){
+      note += `${state.code} was called off at ${formatTime(state.times.codeCalledOff || state.times.chairTransition)} as client was secured and immediate safety risk was contained. `;
+    }
+  }
+
+  if(state.medicationOrders.length){
+    const poOrders = state.medicationOrders.filter(o => o.route === "PO");
+    const imOrders = state.medicationOrders.filter(o => o.route === "IM");
+
+    poOrders.forEach(o => {
+      note += `${o.med} ${o.dose} was offered PO`;
+      if(o.poResponse) note += ` and was ${o.poResponse.toLowerCase()} by the client`;
+      note += `. `;
+    });
+
+    if(imOrders.length){
+      const medList = imOrders.map(o => `${o.med} ${o.dose}`).join(" and ");
+      note += `${medList} was administered IM`;
+      const firstTime = imOrders.find(o => o.time)?.time || state.times.imAdministered;
+      if(firstTime) note += ` at ${formatTime(firstTime)}`;
+      const sites = [...new Set(imOrders.map(o => o.site).filter(Boolean))];
+      if(sites.length) note += `; injection site(s): ${sites.join(", ")}`;
+      const admins = [...new Set(imOrders.map(o => o.administeredBy).filter(Boolean))];
+      if(admins.length) note += `; administered by ${admins.join(", ")}`;
+      note += `. `;
+    }
+  }
+
+  if(state.poResponse === "Refused" && state.mechanicalActive){
+    note += `PO medication refusal occurred while client was in mechanical restraint, and IM medication pathway was indicated/documented. `;
+  }
+
+  
+  if(state.providerMode === "single" && (state.singleProvider || state.times.singleProviderCalled)){
+    note += `${state.singleProvider || "Provider"} was the covering provider and was contacted`;
+    if(state.times.singleProviderCalled) note += ` at ${formatTime(state.times.singleProviderCalled)}`;
+    note += `. `;
+  }
+
+  if(state.providerMode === "dual"){
+    if(state.npProvider || state.times.npCalled){
+      note += `${state.npProvider || "NP"} was contacted`;
+      if(state.times.npCalled) note += ` at ${formatTime(state.times.npCalled)}`;
+      note += ` for medication/restriction orders. `;
+    }
+
+    if(state.mdProvider || state.times.mdCalled){
+      note += `${state.mdProvider || "MD"} was contacted`;
+      if(state.times.mdCalled) note += ` at ${formatTime(state.times.mdCalled)}`;
+      note += ` for restraint-related orders. `;
+    }
+  }
+
+
+  if(state.times.chairReleased){
+    note += `Client was released from the mechanical chair at ${formatTime(state.times.chairReleased)}. `;
+  }
+
+  if(state.times.restraintReleased && !state.times.chairTransition){
+    note += `Physical restraint was released at ${formatTime(state.times.restraintReleased)}. `;
+  }
+
+  if(narrative){
+    note += `Additional note: ${narrative}`;
+  }
+
+  document.getElementById('progressNote').textContent = note.trim();
+  return note.trim();
+}
+
+async function copyProgressNote(){
+  const note = buildProgressNote();
+  await navigator.clipboard.writeText(note);
+  alert("Progress note copied.");
+}
+
+function buildSummary(){
+  const client = document.getElementById('client').value || "[Client]";
+  const unit = document.getElementById('unit').value;
+  const location = document.getElementById('location').value;
+  const trigger = document.getElementById('trigger').value;
+  const provider = document.getElementById('providerName').value || "";
+  const lead = document.getElementById('leadStaff').value || "";
+  const assist = document.getElementById('assistStaff').value || "";
+  const narrative = document.getElementById('narrative').value || "";
+  const site = document.getElementById('site').value || "";
+  const adminNurse = document.getElementById('adminNurse').value || "";
+
+  let s = `WCY Behavioral Event Record\n\n`;
+  s += `Client: ${client}\nUnit: ${unit}\nLocation: ${location}\nTrigger: ${trigger}\n`;
+  s += `Code Type: ${state.code || "Not selected"}\n\n`;
+  s += `Interventions:\n${state.interventions.length ? selectedPills(state.interventions) : "None selected"}\n\n`;
+  if(state.providerType || provider || state.times.providerCalled){
+    s += `Provider Notification:\n`;
+    s += `Type: ${state.providerType || ""}\nProvider: ${provider}\nTime Contacted: ${formatTime(state.times.providerCalled) || ""}\n\n`;
+  }
+  if(state.medicationOrders.length){
+    s += `Medication Orders:\n`;
+    state.medicationOrders.forEach((o, idx) => {
+      s += `${idx+1}. ${o.med} ${o.dose} ${o.route}\n`;
+      if(o.route === "PO") s += `   PO Response: ${o.poResponse || ""}\n`;
+      if(o.route === "IM") {
+        s += `   Site: ${o.site || ""}\n`;
+        s += `   Administered by: ${o.administeredBy || ""}\n`;
+      }
+      if(o.time) s += `   Time: ${formatTime(o.time)}\n`;
+    });
+    s += `\n`;
+  }
+  s += `Restraint / Chair:\nLead staff: ${lead}\nAssisting staff: ${assist}\n`;
+  ["restraintApplied","restraintReleased","chairTransition","codeCalledOff","chairReleased"].forEach(k=>{
+    const label = {
+      restraintApplied:"Physical restraint applied",
+      restraintReleased:"Physical restraint released",
+      chairTransition:"Transitioned to mechanical chair",
+      codeCalledOff:"Code called off",
+      chairReleased:"Released from mechanical chair"
+    }[k];
+    if(state.times[k]) s += `${label}: ${formatTime(state.times[k])}\n`;
+  });
+  s += `\nTimeline:\n`;
+  state.timeline.sort((a,b)=>new Date(a.time)-new Date(b.time)).forEach(item => {
+    s += `${formatTime(item.time)} — ${item.label}\n`;
+  });
+  if(narrative) s += `\nNarrative:\n${narrative}\n`;
+  if(state.edits.length){
+    s += `\nEdited Times:\n`;
+    state.edits.forEach(e => s += `${e.label}: ${formatTime(e.old)} corrected to ${formatTime(e.new)}; ${e.reason}\n`);
+  }
+  document.getElementById('summary').textContent = s;
+  return s;
+}
+
+async function copySummary(){
+  const s = buildSummary();
+  await navigator.clipboard.writeText(s);
+  alert("Event summary copied.");
+}
+
+function smsSummary(){
+  const s = encodeURIComponent(buildSummary());
+  window.location.href = `sms:?&body=${s}`;
+}
+
+render();
+</script>
+</body>
+</html>
